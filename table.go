@@ -13,7 +13,7 @@ const (
 	generatedTag = "generated"
 )
 
-type table struct {
+type dbTable struct {
 	name    string
 	columns []column
 }
@@ -40,8 +40,9 @@ func pointers(cols []column) []interface{} {
 	return res
 }
 
-func parse(structOrStructPtr reflect.Value) (t table, err error) {
-	s := reflect.Indirect(structOrStructPtr)
+// model can be struct or pointer to struct.
+func parseModel(model reflect.Value) (t dbTable, err error) {
+	s := reflect.Indirect(model)
 	if s.Kind() != reflect.Struct {
 		return t, errKind(s.Kind(), reflect.Struct)
 	}
