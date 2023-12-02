@@ -40,6 +40,14 @@ func pointers(cols []column) []interface{} {
 	return res
 }
 
+func values(cols []column) (res []interface{}) {
+	for _, col := range cols {
+		// todo check if can be done without reflect
+		res = append(res, reflect.ValueOf(col.structFieldPtr).Elem().Interface())
+	}
+	return res
+}
+
 // model can be struct or pointer to struct.
 func parseModel(model reflect.Value) (t dbTable, err error) {
 	s := reflect.Indirect(model)
