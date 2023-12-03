@@ -4,6 +4,8 @@ import (
 	"context"
 )
 
+var Migrations = "migrations"
+
 func TruncateAll(db Querier) {
 	sql := `
 	-- Truncate all tables in the public schema
@@ -18,7 +20,7 @@ func TruncateAll(db Querier) {
 		-- RESTART IDENTITY restarts sequences owned by truncated tables
 		|| ' CASCADE RESTART IDENTITY'
 		FROM pg_tables
-		WHERE schemaname = 'public'
+		WHERE schemaname = 'public' AND tablename != '` + Migrations + `'
 		);
 	END
 	$$;
