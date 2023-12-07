@@ -4,9 +4,6 @@ import (
 	"context"
 )
 
-// Migrations is a constant that represents the name of the migrations table.
-var Migrations = "migrations"
-
 // TruncateAll is a function that truncates all tables in the PostgreSQL database,
 // excluding the migrations table. It uses an anonymous function (DO block) to execute
 // the SQL command. This function is intended to be used in a testing environment where

@@ -5,20 +5,35 @@ import (
 	"embed"
 	"fmt"
 	"github.com/jackc/pgx/v5"
+	"io/fs"
+	"sort"
+	"strings"
 )
 
-func Migrate(db Querier, fs embed.FS, files []string) {
-	err := Transaction(db, func(tx pgx.Tx) error {
-		sql := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (version TEXT UNIQUE NOT NULL)", Migrations)
-		_, err := tx.Exec(context.Background(), sql)
+// Migrations is a constant that represents the name of the migrations table.
+var Migrations = "migrations"
+
+func Migrate(db Querier, migrations embed.FS) {
+	entries, err := migrations.ReadDir(".")
+	if err != nil {
+		panic(err)
+	}
+	files := filenames(entries)
+	err = Transaction(db, func(tx pgx.Tx) error {
+		sql := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (filename TEXT UNIQUE NOT NULL)", Migrations)
+		_, err = tx.Exec(context.Background(), sql)
 		if err != nil {
 			return err
 		}
 		for _, filename := range files {
-			if exists(tx, filename) {
-				continue
+			content, err := migrations.ReadFile(filename)
+			if err != nil {
+				return err
 			}
-			migrate(tx, fs, filename)
+			err = migrate(tx, filename, string(content))
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	})
@@ -27,27 +42,44 @@ func Migrate(db Querier, fs embed.FS, files []string) {
 	}
 }
 
-func migrate(tx pgx.Tx, fs embed.FS, filename string) {
-	content, err := fs.ReadFile(filename)
-	if err != nil {
-		panic(err)
+func filenames(entries []fs.DirEntry) (names []string) {
+	names = make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		if !strings.HasSuffix(entry.Name(), ".sql") {
+			continue
+		}
+		names = append(names, entry.Name())
 	}
-	ctx := context.Background()
-	if _, err := tx.Exec(ctx, string(content)); err != nil {
-		panic(err)
-	}
-	sql := fmt.Sprintf("INSERT INTO %s (version) VALUES ($1)", Migrations)
-	if _, err := tx.Exec(ctx, sql, filename); err != nil {
-		panic(err)
-	}
+	sort.Strings(names)
+	return names
 }
 
-func exists(tx pgx.Tx, version string) bool {
-	sql := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE version=$1)", Migrations)
-	var e bool
-	err := tx.QueryRow(context.Background(), sql, version).Scan(&e)
+func migrate(tx Querier, filename, content string) error {
+	ok, err := exists(tx, filename)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	return e
+	if ok {
+		return nil
+	}
+	_, err = tx.Exec(context.Background(), content)
+	if err != nil {
+		return err
+	}
+	return insert(tx, filename)
+}
+
+func insert(tx Querier, filename string) (err error) {
+	sql := fmt.Sprintf("INSERT INTO %s (filename) VALUES ($1)", Migrations)
+	_, err = tx.Exec(context.Background(), sql, filename)
+	return err
+}
+
+func exists(tx Querier, version string) (ok bool, err error) {
+	sql := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE filename=$1)", Migrations)
+	err = tx.QueryRow(context.Background(), sql, version).Scan(&ok)
+	return ok, err
 }
