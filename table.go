@@ -96,11 +96,12 @@ func parseModel(model reflect.Value) (t dbTable, err error) {
 	return t, nil
 }
 
+// parseColumn is a function that processes a struct tag from a Go struct field.
+// It specifically looks for the 'column' tag and extracts two pieces of information:
+// 1. The name of the database column that the struct field maps to.
+// 2. A boolean flag indicating whether the database column is auto-generated (e.g., an auto-incrementing ID).
 func parseColumn(t reflect.StructTag) (name string, gen bool) {
 	c := t.Get(columnTag)
-	if c == "" {
-		return "", false
-	}
 	name = strings.Split(c, ",")[0]
 	gen = strings.Contains(c, generatedTag)
 	return name, gen
