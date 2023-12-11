@@ -101,14 +101,17 @@ func insertMany(db Querier, models []reflect.Value) (err error) {
 	return rows.Err()
 }
 
-func splitCols(cols []column) (res []column, generated column) {
-	res = make([]column, 0, len(cols))
+// splitCols is a function that takes a slice of columns as input.
+// It returns two outputs: a slice of columns that are not generated and a single column that is generated.
+// If there are multiple generated columns, it will return the last one.
+// If there are no generated columns, it will return an empty column.
+func splitCols(cols []column) (nonGenerated []column, generated column) {
 	for _, col := range cols {
 		if col.generated {
 			generated = col
-			continue
+		} else {
+			nonGenerated = append(nonGenerated, col)
 		}
-		res = append(res, col)
 	}
 	return
 }
