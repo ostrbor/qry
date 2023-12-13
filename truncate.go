@@ -18,7 +18,7 @@ func TruncateAll(db Querier) {
   || string_agg(format('%I', tablename), ', ')
   -- CASCADE ensures truncating tables with references to the specified tables
   -- RESTART IDENTITY restarts sequences owned by truncated tables
-  || ' CASCADE RESTART IDENTITY'
+  || ' RESTART IDENTITY CASCADE'
   FROM pg_tables
   WHERE schemaname = 'public' AND tablename != '` + Migrations + `'
   );
