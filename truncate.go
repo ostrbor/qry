@@ -11,7 +11,15 @@ import (
 func TruncateAll(db Querier) {
 	sql := `
  DO $$
+ DECLARE
+  cnt INT;
  BEGIN
+  SELECT COUNT(*) INTO cnt
+  FROM pg_tables
+  WHERE schemaname = 'public' AND tablename != ` + Migrations + `;
+  IF (cnt = 0) THEN
+	  RETURN;
+  END IF;
   EXECUTE
   (SELECT 'TRUNCATE TABLE '
   -- Escape table names using %I to handle potential keywords or spaces
