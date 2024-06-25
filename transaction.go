@@ -14,8 +14,13 @@ func Transaction(db Querier, f func(tx pgx.Tx) error) (err error) {
 	}
 
 	defer func() {
-		if err = tx.Rollback(ctx); err != nil {
-			err = fmt.Errorf("failed tx.Rollback: %s", err)
+		// tx.Rollback returns error if tx is already closed on eg successful commit
+		// such err (tx is closed) should be ignored
+		if err == nil {
+			return
+		}
+		if rerr := tx.Rollback(ctx); rerr != nil {
+			err = fmt.Errorf("failed tx.Rollback: %s", rerr)
 		}
 	}()
 
